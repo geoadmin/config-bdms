@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    keel.sh/policy: force
+    keel.sh/match-tag: 'true'
+    keel.sh/trigger: poll
+spec:
+  replicas: {{ .Values.replicaCount}}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-api
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-api
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-api
+        image: ghcr.io/geoadmin/suite-bdms-api:{{ .Values.app.version | default "latest" }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        env:
+        - name: S3__ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-secrets
+              key: s3AccessKey
+              optional: true
+        - name: S3__SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-secrets
+              key: s3SecretKey
+              optional: true
+        - name: S3__BUCKET_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: s3bucket
+        - name: S3__ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: s3Endpoint
+        - name: S3__SECURE
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: s3Secure
+              optional: true
+        - name: CONNECTIONSTRINGS__BdmsContext
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-secrets
+              key: databaseConnectionString
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: timezone
+        - name: ReverseProxy__Clusters__pythonApi__Destinations__legacyApi__Address
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: legacyApiAddress
+        - name: Auth__Authority
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: authAuthority
+        - name: Auth__Audience
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: authAudience
+        - name: Auth__Scopes
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: authScopes
+        - name: Auth__GroupClaimType
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: authGroupClaimType
+        - name: Auth__AuthorizedGroupName
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config
+              key: authAuthorizedGroupName
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: {{ .Release.Name }}-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080

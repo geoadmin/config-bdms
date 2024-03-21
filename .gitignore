@@ -1,4 +1,2 @@
 # Environment file containing sensitive data
 .env
-kubernetes-manifests/secrets/*
-!kubernetes-manifests/secrets/boreholes.template.yaml
